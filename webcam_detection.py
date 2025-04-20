@@ -1,44 +1,56 @@
+# Install necessary libraries
+
+
+# Import the libraries
+from ultralytics import YOLO
 import cv2
-import mediapipe as mp
+import numpy as np
+from google.colab.patches import cv2_imshow
 
-# Initialize mediapipe hand detector
-mp_hands = mp.solutions.hands
-mp_drawing = mp.solutions.drawing_utils
-hands = mp_hands.Hands(static_image_mode=True, max_num_hands=2, min_detection_confidence=0.7)
+# Load the YOLOv8 model (pre-trained for detecting hands or general objects)
+model = YOLO('/content/yolo11n.pt')  # You can choose different YOLO models (like 'yolov8m.pt' or 'yolov8l.pt')
 
-# Read the image
-image_path = 'sat.jpg'  # 🔁 Replace with your image filename
-image = cv2.imread(image_path)
+# Open the webcam (0 for default camera)
+cap = cv2.VideoCapture(0)
 
-if image is None:
-    print("Image not found.")
-    exit()
-image = cv2.resize(image, (640, 480))
-# Flip and convert to RGB
-image = cv2.flip(image, 1)
-h, w, _ = image.shape
-rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+# Set the video width and height
+cap.set(3, 640)  # Width
+cap.set(4, 480)  # Height
 
-result = hands.process(rgb)
-hand_raised = False
+# Start video capture loop
+while True:
+    # Read a frame from the camera
+    ret, frame = cap.read()
 
-if result.multi_hand_landmarks:
-    for hand_landmarks in result.multi_hand_landmarks:
-        wrist_y = hand_landmarks.landmark[0].y
-        wrist_pixel_y = wrist_y * h
+    if not ret:
+        break
+    
+    # Run hand detection using the YOLO model
+    results = model(frame)
 
-        # Simple logic: wrist above middle of image => raised hand
-        if wrist_pixel_y < h / 2:
-            hand_raised = True
+    # Process the detections
+    for result in results:
+        boxes = result.boxes.xyxy  # Get the bounding boxes
+        confidences = result.boxes.conf  # Get confidence scores
+        class_ids = result.boxes.cls  # Get class IDs
 
-        mp_drawing.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+        for box, conf, class_id in zip(boxes, confidences, class_ids):
+            if conf > 0.5:  # Confidence threshold for detecting objects (hands in this case)
+                x1, y1, x2, y2 = map(int, box)  # Get box coordinates
+                label = f'{model.names[int(class_id)]}: {conf:.2f}'  # Class label and confidence
+                color = (0, 255, 0)  # Green color for the bounding box
 
-# Display result
-if hand_raised:
-    cv2.putText(image, '✋ Hand Raised Detected!', (30, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 3)
-else:
-    cv2.putText(image, 'No Hand Raised', (30, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
+                # Draw the bounding box on the frame
+                cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+                cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
-cv2.imshow('Hand Raise Detection - Image', image)
-cv2.waitKey(0)
+    # Display the frame with bounding boxes
+    cv2_imshow(frame)
+
+    # Exit the loop if 'q' is pressed
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+# Release the webcam and close all windows
+cap.release()
 cv2.destroyAllWindows()
