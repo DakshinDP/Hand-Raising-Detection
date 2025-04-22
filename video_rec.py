@@ -7,7 +7,7 @@ mp_drawing = mp.solutions.drawing_utils
 hands = mp_hands.Hands(static_image_mode=False, max_num_hands=2, min_detection_confidence=0.7)
 
 # Load video file
-cap = cv2.VideoCapture('hr1.mp4')  # Replace with your video path
+cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)  # Replace with your video path
 
 while cap.isOpened():
     ret, frame = cap.read()
