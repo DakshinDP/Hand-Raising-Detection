@@ -7,7 +7,7 @@ pose = mp_pose.Pose(static_image_mode=False, min_detection_confidence=0.5, model
 mp_drawing = mp.solutions.drawing_utils
 
 # Start webcam
-cap = cv2.VideoCapture('hr1.mp4') 
+cap = cv2.VideoCapture(0, cv2.CAP_DSHOW) 
 
 while cap.isOpened():
     ret, frame = cap.read()
